@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mock Explorer</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f2f5;
+        color: #333;
+      }
+      #app {
+        max-width: 960px;
+        margin: 40px auto;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .search {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .search input[type='text'] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+      }
+      .search button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      .search button:hover {
+        background-color: #0056b3;
+      }
+      h2 {
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      li {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      li:last-child {
+        border-bottom: none;
+      }
+      .transaction,
+      .address {
+        cursor: pointer;
+        color: #007bff;
+        transition: color 0.3s ease;
+      }
+      .transaction:hover,
+      .address:hover {
+        color: #0056b3;
+        text-decoration: none;
+      }
+      #sankey_chart {
+        width: 100%;
+        height: 400px;
+        margin-top: 20px;
+      }
+      .flex-container {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .flex-container > div {
+        flex: 1;
+      }
+      li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .timestamp {
+        font-size: 0.9em;
+        color: #666;
+        margin-right: 10px;
+      }
+      .transaction {
+        color: #007bff;
+        cursor: pointer;
+        transition: color 0.3s ease;
+      }
+      .transaction:hover {
+        color: #0056b3;
+      }
+      .back-button {
+        padding: 10px 20px;
+        background-color: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, border-color 0.3s;
+      }
+      .back-button:hover {
+        background-color: #e0e0e0;
+        border-color: #bbb;
+      }
+      @media (max-width: 768px) {
+        .flex-container {
+          flex-direction: column;
+        }
+      }
+    </style>
+
+    <script
+      type="text/javascript"
+      src="https://www.gstatic.com/charts/loader.js"
+    ></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="search">
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="Search by Transaction ID or Address"
+          @keyup.enter="searchTransaction"
+        />
+        <button @click="searchTransaction">Search</button>
+      </div>
+      <div class="list" v-if="view === 'list'">
+        <h2>Transactions</h2>
+        <p v-if="filteredByAddress">Filtered by: {{ filteredByAddress }}</p>
+        <ul>
+          <li v-for="transaction in transactions" :key="transaction.txid">
+            <span
+              class="transaction"
+              @click="selectTransaction(transaction.txid)"
+              >{{ transaction.txid }}</span
+            >
+            <span class="timestamp">{{ transaction.timestamp }}</span>
+          </li>
+        </ul>
+      </div>
+      <div id="details" v-if="view === 'details'">
+        <h2>Transaction Details</h2>
+        <p><strong>ID:</strong> {{ selectedTransaction.txid }}</p>
+        <p><strong>Amount:</strong> {{ totalAmountTransferred }}</p>
+        <p><strong>Timestamp:</strong> {{ selectedTransaction.timestamp }}</p>
+        <!-- Display total transferred amount -->
+        <div id="sankey_chart"></div>
+        <div class="flex-container">
+          <div>
+            <h3>Inputs</h3>
+            <ul>
+              <li v-if="selectedTransaction.inputs.length === 0">
+                Coinbase Transaction
+              </li>
+              <li v-for="input in selectedTransaction.inputs" :key="input.txid">
+                <span class="transaction" @click="selectTransaction(input.txid)"
+                  >{{ input.txid }} ({{ input.address }})</span
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3>Outputs</h3>
+            <ul>
+              <li
+                v-for="output in selectedTransaction.outputs"
+                :key="output.address"
+              >
+                <span class="address" @click="searchByAddress(output.address)"
+                  >{{ output.address }} ({{ output.amount }})</span
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+        <button @click="backToList" class="back-button">
+          Back to All Transactions
+        </button>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script>
+      google.charts.load('current', { packages: ['sankey'] })
+      new Vue({
+        el: '#app',
+        data: {
+          transactions: [],
+          selectedTransaction: null,
+          searchQuery: '',
+          view: 'list',
+          totalAmountTransferred: 0,
+          filteredByAddress: null,
+        },
+        mounted() {
+          this.fetchTransactions()
+        },
+        methods: {
+          fetchTransactions() {
+            axios.get('/transactions').then((response) => {
+              this.transactions = response.data.sort(
+                (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+              )
+            })
+          },
+          selectTransaction(txid) {
+            this.selectedTransaction = this.transactions.find(
+              (tx) => tx.txid === txid
+            )
+            this.calculateTotalTransferred()
+            this.view = 'details'
+            this.$nextTick(this.drawSankey)
+          },
+          searchTransaction() {
+            const query = this.searchQuery.trim()
+            if (query.startsWith('tx_')) {
+              this.selectTransaction(query)
+              this.filteredByAddress = null
+            } else if (query.startsWith('addr_')) {
+              this.searchByAddress(query)
+            } else {
+              alert('Please enter a valid transaction ID or address.')
+            }
+          },
+          searchByAddress(address) {
+            this.view = 'list'
+            this.transactions = this.transactions.filter(
+              (tx) =>
+                tx.inputs.some((input) => input.address === address) ||
+                tx.outputs.some((output) => output.address === address)
+            )
+            this.filteredByAddress = address
+          },
+          drawSankey() {
+            if (!this.selectedTransaction) return
+            const data = new google.visualization.DataTable()
+            data.addColumn('string', 'From')
+            data.addColumn('string', 'To')
+            data.addColumn('number', 'Amount')
+            const rows = []
+
+            this.selectedTransaction.outputs.forEach((output) => {
+              this.selectedTransaction.inputs.forEach((input) => {
+                rows.push([input.txid, output.address, output.amount])
+              })
+            })
+            data.addRows(rows)
+            const options = {
+              sankey: {
+                node: { label: { fontSize: 12 } },
+                link: {
+                  colorMode: 'gradient',
+                  colors: ['#a6cee3', '#1f78b4', '#b2df8a'],
+                },
+              },
+            }
+            const chart = new google.visualization.Sankey(
+              document.getElementById('sankey_chart')
+            )
+            chart.draw(data, options)
+          },
+          calculateTotalTransferred() {
+            if (!this.selectedTransaction) return
+            this.totalAmountTransferred =
+              this.selectedTransaction.outputs.reduce(
+                (sum, output) => sum + output.amount,
+                0
+              )
+          },
+          backToList() {
+            this.selectedTransaction = null
+            this.view = 'list'
+            this.searchQuery = ''
+            this.filteredByAddress = null
+            this.fetchTransactions()
+          },
+        },
+      })
+    </script>
+  </body>
+</html>

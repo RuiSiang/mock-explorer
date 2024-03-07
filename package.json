@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "start": "node app.js",
+    "generate": "node random-tx.js > transactions.json"
+  },
+  "dependencies": {
+    "koa": "^2.15.0",
+    "koa-bodyparser": "^4.4.1",
+    "koa-router": "^12.0.1",
+    "koa-static": "^5.0.0"
+  }
+}

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mock Explorer Transaction Dump</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+    <style>
+      #sankey {
+        width: 6000px;
+        height: 6000px;
+      }
+      .link {
+        fill: none;
+        stroke: #000;
+        stroke-opacity: 0.2;
+      }
+      .node rect {
+        fill-opacity: 0.9;
+        shape-rendering: crispEdges;
+      }
+      .node text {
+        fill: #000;
+        font: 10px sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sankey"></div>
+    <script>
+      width = 6000
+      height = 6000
+      fetch('/transactions')
+        .then((response) => response.json())
+        .then((data) => createSankey(data))
+        .catch((error) => console.error('Error fetching transactions:', error))
+
+      function createSankey(transactions) {
+        let nodes = [],
+          links = [],
+          nodeMap = new Map(),
+          duplicateCounter = 1
+
+        transactions.forEach((tx) => {
+          tx.inputs.forEach((input) => {
+            let sourceKey = input.address
+
+            let sourceNode = nodeMap.get(sourceKey) || { name: sourceKey }
+            nodes.push(sourceNode)
+            nodeMap.set(sourceKey, sourceNode)
+
+            tx.outputs.forEach((output) => {
+              let targetKey = output.address
+              let targetNode = nodeMap.get(targetKey)
+              if (!targetNode) {
+                targetNode = { name: targetKey }
+                nodeMap.set(targetKey, targetNode)
+              } else if (targetNode === sourceNode) {
+                targetNode = { name: `${targetKey}_dup${duplicateCounter++}` }
+              }
+              nodes.push(targetNode)
+
+              links.push({
+                source: sourceNode,
+                target: targetNode,
+                value: output.amount,
+              })
+            })
+          })
+        })
+
+        nodes = Array.from(
+          new Map(nodes.map((node) => [node.name, node])).values()
+        )
+
+        nodes.forEach((node, index) => (node.index = index))
+        links = links.map((link) => ({
+          source: nodes.indexOf(link.source),
+          target: nodes.indexOf(link.target),
+          value: link.value,
+        }))
+
+        const sankey = d3
+          .sankey()
+          .nodeWidth(15)
+          .nodePadding(10)
+          .extent([
+            [1, 1],
+            [width - 1, width - 6],
+          ])
+
+        const { nodes: graphNodes, links: graphLinks } = sankey({
+          nodes: nodes.map((d) => Object.assign({}, d)),
+          links: links.map((d) => Object.assign({}, d)),
+        })
+
+        const svg = d3
+          .select('#sankey')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height)
+
+        svg
+          .append('g')
+          .selectAll('path')
+          .data(graphLinks)
+          .enter()
+          .append('path')
+          .attr('class', 'link')
+          .attr('d', d3.sankeyLinkHorizontal())
+          .style('stroke-width', (d) => Math.max(1, d.width))
+
+        const node = svg
+          .append('g')
+          .selectAll('.node')
+          .data(graphNodes)
+          .enter()
+          .append('g')
+          .attr('class', 'node')
+          .attr('transform', (d) => `translate(${d.x0}, ${d.y0})`)
+
+        node
+          .append('rect')
+          .attr('height', (d) => d.y1 - d.y0)
+          .attr('width', sankey.nodeWidth())
+          .style('fill', 'navy')
+
+        node
+          .append('text')
+          .attr('x', -6)
+          .attr('y', (d) => (d.y1 - d.y0) / 2)
+          .attr('dy', '0.35em')
+          .attr('text-anchor', 'end')
+          .text((d) => d.name.replace(/_dup\d+$/, ''))
+          .filter((d) => d.x0 < width / 2)
+          .attr('x', 6 + sankey.nodeWidth())
+          .attr('text-anchor', 'start')
+      }
+    </script>
+  </body>
+</html>
