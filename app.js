@@ -15,7 +15,7 @@ const transactions = JSON.parse(fs.readFileSync('transactions.json', 'utf-8'));
 app.use(bodyParser());
 
 // Serve static files from the public directory
-app.use(serve(path.join(__dirname, 'public'), { cleanUrls: true }));
+app.use(serve(path.join(__dirname, 'public')));
 
 // Routes
 // Get all transactions
