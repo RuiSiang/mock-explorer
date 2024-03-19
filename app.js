@@ -19,7 +19,7 @@ app.use(serve(path.join(__dirname, 'public')));
 
 // Routes
 // Get all transactions
-router.get('/transactions', ctx => {
+router.get(['/transactions', '/explorer/transactions'], ctx => {
   ctx.body = transactions;
 });
 

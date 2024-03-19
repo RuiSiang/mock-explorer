@@ -223,7 +223,7 @@
         },
         methods: {
           fetchTransactions() {
-            axios.get('transactions').then((response) => {
+            axios.get('/explorer/transactions').then((response) => {
               this.transactions = response.data.sort(
                 (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
               )

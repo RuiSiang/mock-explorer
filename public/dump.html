@@ -31,7 +31,7 @@
     <script>
       width = 6000
       height = 6000
-      fetch('transactions')
+      fetch('/explorer/transactions')
         .then((response) => response.json())
         .then((data) => createSankey(data))
         .catch((error) => console.error('Error fetching transactions:', error))
