@@ -212,6 +212,7 @@
       new Vue({
         el: '#app',
         data: {
+          allTransactions: [],
           transactions: [],
           selectedTransaction: null,
           searchQuery: '',
@@ -225,13 +226,15 @@
         methods: {
           fetchTransactions() {
             axios.get('/explorer/transactions').then((response) => {
-              this.transactions = response.data.sort(
+              const sortedTransactions = response.data.sort(
                 (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
               )
+              this.transactions = sortedTransactions
+              this.allTransactions = sortedTransactions
             })
           },
           selectTransaction(txid) {
-            this.selectedTransaction = this.transactions.find(
+            this.selectedTransaction = this.allTransactions.find(
               (tx) => tx.txid === txid
             )
             this.calculateTotalTransferred()
