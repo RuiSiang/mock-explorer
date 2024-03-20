@@ -249,13 +249,14 @@
               this.filteredByAddress = null
             } else if (query.startsWith('addr_')) {
               this.searchByAddress(query)
+              this.searchQuery = ''
             } else {
               alert('Please enter a valid transaction ID or address.')
             }
           },
           searchByAddress(address) {
             this.view = 'list'
-            this.transactions = this.transactions.filter(
+            this.transactions = this.allTransactions.filter(
               (tx) =>
                 tx.inputs.some((input) => input.address === address) ||
                 tx.outputs.some((output) => output.address === address)
