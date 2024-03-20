@@ -240,6 +240,7 @@
             this.calculateTotalTransferred()
             this.view = 'details'
             this.$nextTick(this.drawSankey)
+            this.searchQuery = ''
           },
           searchTransaction() {
             const query = this.searchQuery.trim()
@@ -260,6 +261,7 @@
                 tx.outputs.some((output) => output.address === address)
             )
             this.filteredByAddress = address
+            this.searchQuery = ''
           },
           drawSankey() {
             if (!this.selectedTransaction) return
